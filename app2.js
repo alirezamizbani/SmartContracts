@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ethers } from "ethers";
-import { contractAddress, contractABI } from "./contract";
+import { ethers, providers, Contract } from "ethers";
+import { formatUnits, parseUnits } from "ethers/lib/utils.js";
 
 function App() {
   const [account, setAccount] = useState(null);
@@ -8,50 +8,128 @@ function App() {
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
 
+  // ✅ قرارداد و ABI داخل همین فایل
+  const contractAddress = "0xdC45C97265498DA1E5e8Ab7Ab0455f740825C43f";
+  const contractABI = [
+    {
+      "inputs": [{ "internalType": "uint256", "name": "initialSupply", "type": "uint256" }],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": true, "internalType": "address", "name": "owner", "type": "address" },
+        { "indexed": true, "internalType": "address", "name": "spender", "type": "address" },
+        { "indexed": false, "internalType": "uint256", "name": "value", "type": "uint256" }
+      ],
+      "name": "Approval",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        { "internalType": "address", "name": "spender", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "name": "approve",
+      "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "address", "name": "account", "type": "address" }
+      ],
+      "name": "balanceOf",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "address", "name": "to", "type": "address" },
+        { "internalType": "uint256", "name": "amount", "type": "uint256" }
+      ],
+      "name": "transfer",
+      "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "name",
+      "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "symbol",
+      "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalSupply",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    // ✅ سایر توابع (mint, transferFrom, allowance, increaseAllowance, decreaseAllowance, owner, etc.) می‌توانند اضافه شوند
+  ];
+
   let provider, signer, contract;
 
   async function connectWallet() {
     if (window.ethereum) {
-      provider = new ethers.BrowserProvider(window.ethereum);
-      signer = await provider.getSigner();
+      provider = new providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
       const acc = await signer.getAddress();
       setAccount(acc);
-      contract = new ethers.Contract(contractAddress, contractABI, signer);
+      contract = new Contract(contractAddress, contractABI, signer);
     } else {
-      alert("MetaMask نصب نیست!");
+      alert("MetaMask is not installed!");
     }
   }
 
   async function getBalance() {
-    provider = new ethers.BrowserProvider(window.ethereum);
-    signer = await provider.getSigner();
-    contract = new ethers.Contract(contractAddress, contractABI, signer);
+    provider = new providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    contract = new Contract(contractAddress, contractABI, signer);
     const bal = await contract.balanceOf(account);
-    setBalance(ethers.formatUnits(bal, 18));
+    setBalance(formatUnits(bal, 18));
   }
 
   async function transferTokens() {
-    provider = new ethers.BrowserProvider(window.ethereum);
-    signer = await provider.getSigner();
-    contract = new ethers.Contract(contractAddress, contractABI, signer);
-    const tx = await contract.transfer(to, ethers.parseUnits(amount, 18));
+    provider = new providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    contract = new Contract(contractAddress, contractABI, signer);
+    const tx = await contract.transfer(to, parseUnits(amount, 18));
     await tx.wait();
-    alert("انتقال موفق بود!");
+    alert("Transfer successful!");
   }
 
   return (
     <div style={{ padding: 20 }}>
       <h2>MyToken Dapp</h2>
-      <button onClick={connectWallet}>اتصال به کیف پول</button>
-      <p>آدرس متصل: {account}</p>
+      <button onClick={connectWallet}>Connect Wallet</button>
+      <p>Connected Address: {account}</p>
 
-      <button onClick={getBalance}>نمایش موجودی</button>
-      <p>موجودی: {balance} MTK</p>
+      <button onClick={getBalance}>Show Balance</button>
+      <p>Balance: {balance} MTK</p>
 
-      <h3>انتقال توکن</h3>
-      <input placeholder="آدرس گیرنده" onChange={e => setTo(e.target.value)} />
-      <input placeholder="مقدار" onChange={e => setAmount(e.target.value)} />
-      <button onClick={transferTokens}>ارسال</button>
+      <h3>Transfer Tokens</h3>
+      <input placeholder="Recipient Address" onChange={e => setTo(e.target.value)} />
+      <input placeholder="Amount" onChange={e => setAmount(e.target.value)} />
+      <button onClick={transferTokens}>Send</button>
     </div>
   );
 }
